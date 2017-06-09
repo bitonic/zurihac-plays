@@ -89,8 +89,6 @@ instance (Abbreviated next) => Abbreviated (CaptureRoomId next) where
 -- API
 -- --------------------------------------------------------------------
 
-type RoomId = Text
-
 data RoomChans = RoomChans
   { rcIn :: Unagi.InChan Message
   , rcOut :: Unagi.OutChan Message
@@ -128,7 +126,7 @@ eventsSourceApp rid out pendingConn = do
   where
     loop conn = do
       msg <- Unagi.readChan out
-      WS.sendBinaryData conn (Aeson.encode msg)
+      WS.sendBinaryData conn (Aeson.encode (messageEvent msg))
       loop conn
 
 newRoom :: TVar ServerState -> IO RoomId

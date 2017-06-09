@@ -18,6 +18,8 @@ library
   exposed-modules:
     ZuriHac.Plays.Server
     ZuriHac.Plays.XSink
+    ZuriHac.Plays.DebugSink
+    ZuriHac.Plays.Sink
     ZuriHac.Plays.Protocol
     ZuriHac.Plays.TH
     ZuriHac.Plays.Prelude
@@ -37,7 +39,9 @@ library
     wai-websockets,
     safe-exceptions,
     unagi-chan,
-    file-embed
+    file-embed,
+    pipes,
+    network
   default-language:    Haskell2010
   default-extensions:
     StrictData

@@ -35,5 +35,7 @@ data Event
   | EventKeyRelease KeyCode
   deriving (Eq, Show)
 
+type RoomId = Text
+
 deriveJSON (jsonProduct "message") ''Message
 deriveJSON (jsonSum "Event") ''Event
