@@ -23,12 +23,15 @@ OR
 
 -}
 
-type KeyCode = Int
+type KeyCode = String
 
 data Event
   = EventKeyPress KeyCode
   | EventKeyRelease KeyCode
   deriving (Eq, Show)
+
+ekpKeyCode (EventKeyPress keyCode) = keyCode
+ekpKeyCode (EventKeyRelease keyCode) = keyCode
 
 type RoomId = Text
 

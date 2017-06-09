@@ -65,7 +65,7 @@
       function zurihacPlays(socket) {
         window.addEventListener('keydown', function(e) {
           e.preventDefault();
-          var code = e.keyCode;
+          var code = e.code;
           log('press ' + code);
           socket.send(JSON.stringify({
             'KeyPress': code
@@ -75,7 +75,7 @@
 
         window.addEventListener('keyup', function(e) {
           e.preventDefault();
-          var code = e.keyCode;
+          var code = e.code;
           log('release ' + code);
           socket.send(JSON.stringify({
             'KeyRelease': code

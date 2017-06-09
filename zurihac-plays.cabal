@@ -21,12 +21,9 @@ library
   exposed-modules:
     ZuriHac.Plays.Server
     ZuriHac.Plays.XSink
-<<<<<<< HEAD
     ZuriHac.Plays.DebugSink
     ZuriHac.Plays.Sink
-=======
     ZuriHac.Plays.XSink.FakeKey
->>>>>>> Initial commit
     ZuriHac.Plays.Protocol
     ZuriHac.Plays.TH
     ZuriHac.Plays.Prelude
