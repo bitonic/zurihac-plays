@@ -15,11 +15,18 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
+  c-sources:           cbits/fakekey.c
+  if(os(linux))
+    extra-libraries: X11, Xtst
   exposed-modules:
     ZuriHac.Plays.Server
     ZuriHac.Plays.XSink
+<<<<<<< HEAD
     ZuriHac.Plays.DebugSink
     ZuriHac.Plays.Sink
+=======
+    ZuriHac.Plays.XSink.FakeKey
+>>>>>>> Initial commit
     ZuriHac.Plays.Protocol
     ZuriHac.Plays.TH
     ZuriHac.Plays.Prelude
