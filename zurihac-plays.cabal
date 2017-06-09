@@ -18,8 +18,30 @@ library
   exposed-modules:
     ZuriHac.Plays.Server
     ZuriHac.Plays.XSink
-  build-depends:       base >= 4.7 && < 5
+    ZuriHac.Plays.Protocol
+    ZuriHac.Plays.TH
+    ZuriHac.Plays.Prelude
+  build-depends:
+    base >= 4.7 && < 5,
+    aeson,
+    text,
+    solga,
+    unordered-containers,
+    stm,
+    lucid,
+    wai,
+    warp,
+    http-types,
+    bytestring
   default-language:    Haskell2010
+  default-extensions:
+    StrictData
+    TemplateHaskell
+    NoImplicitPrelude
+    TypeOperators
+    DeriveGeneric
+    DataKinds
+    TypeFamilies
 
 executable zurihac-plays-server
   hs-source-dirs:      app
