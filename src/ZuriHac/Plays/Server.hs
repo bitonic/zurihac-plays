@@ -13,9 +13,16 @@ import qualified Network.Wai.Handler.WebSockets as WS
 import qualified Network.WebSockets as WS
 import qualified Data.Aeson as Aeson
 import qualified Control.Concurrent.Chan.Unagi as Unagi
+import Data.FileEmbed (embedFile)
 
 import ZuriHac.Plays.Prelude
 import ZuriHac.Plays.Protocol
+
+-- Static
+-- --------------------------------------------------------------------
+
+clientHtml :: ByteString
+clientHtml = $(embedFile "static/client.html")
 
 -- Routers
 -- --------------------------------------------------------------------
@@ -62,7 +69,7 @@ instance forall next. (Router next) => Router (CaptureRoomId next) where
   tryRoute req = case Wai.pathInfo req of
     seg : segs -> do
       roomId <- fromSegment seg
-      nextRouter <- tryRoute req
+      nextRouter <- tryRoute req{Wai.pathInfo = segs}
       return $ \CaptureRoomId{cridServerStateVar, cridNext} cont -> do
         ss <- atomically (readTVar cridServerStateVar)
         let mbRsVar = HMS.lookup roomId (ssRooms ss)
@@ -124,22 +131,26 @@ eventsSourceApp rid out pendingConn = do
       WS.sendBinaryData conn (Aeson.encode msg)
       loop conn
 
+newRoom :: TVar ServerState -> IO RoomId
+newRoom ssVar = do
+  (rcIn, rcOut) <- Unagi.newChan
+  atomically $ do
+    ss <- readTVar ssVar
+    let c = ssRoomIdCounter ss
+    let rid = tshow c
+    writeTVar ssVar ss
+      { ssRooms = HMS.insert rid RoomChans{rcIn, rcOut} (ssRooms ss)
+      , ssRoomIdCounter = c+1
+      }
+    return rid
+
 api :: WS.ConnectionOptions -> TVar ServerState -> Api
 api wsOptions ssVar = Api
   { new = brief $ do
-      (rcIn, rcOut) <- Unagi.newChan
-      atomically $ do
-        ss <- readTVar ssVar
-        let c = ssRoomIdCounter ss
-        let rid = tshow c
-        writeTVar ssVar ss
-          { ssRooms = HMS.insert rid RoomChans{rcIn, rcOut} (ssRooms ss)
-          , ssRoomIdCounter = c+1
-          }
-        return rid
+      newRoom ssVar
   , client = brief
       ( ssVar
-      , \_roomId _rsVar -> T.encodeUtf8 "Hello"
+      , \_roomId _rsVar -> clientHtml
       )
   , eventsSink = brief
       ( ssVar
@@ -161,5 +172,6 @@ run = do
     { ssRooms = mempty
     , ssRoomIdCounter = 0
     }
+  void (newRoom ssVar)
   Warp.run 8000 (serve (api WS.defaultConnectionOptions ssVar))
 

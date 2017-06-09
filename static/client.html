@@ -47,8 +47,7 @@
 
       /* Connect to the events sink and spawn the 'zurihacPlays'. */
       function connectToEventsSink() {
-        // var url = eventsSinkUrlFromLocation();
-        var url = 'wss://echo.websocket.org';
+        var url = eventsSinkUrlFromLocation();
         log('Connecting to ' + url + '...');
         var socket = new WebSocket(url);
         var clientId = generateUuid();
@@ -70,8 +69,8 @@
           var code = e.keyCode;
           log('press ' + code);
           socket.send(JSON.stringify({
-            'Client': clientId,
-            'Event': {
+            'client': clientId,
+            'event': {
               'KeyPress': code
             }
           }));
@@ -83,8 +82,8 @@
           var code = e.keyCode;
           log('release ' + code);
           socket.send(JSON.stringify({
-            'Client': clientId,
-            'Event': {
+            'client': clientId,
+            'event': {
               'KeyRelease': code
             }
           }));

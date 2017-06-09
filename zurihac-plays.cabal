@@ -36,7 +36,8 @@ library
     websockets,
     wai-websockets,
     safe-exceptions,
-    unagi-chan
+    unagi-chan,
+    file-embed
   default-language:    Haskell2010
   default-extensions:
     StrictData
