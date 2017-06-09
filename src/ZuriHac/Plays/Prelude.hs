@@ -14,6 +14,7 @@ import Control.Concurrent.STM as X (atomically)
 import Data.Functor.Identity as X (Identity, runIdentity)
 import Data.ByteString as X (ByteString)
 import Data.Semigroup as X ((<>))
+import Control.Exception.Safe as X (throw)
 
 import qualified Data.Text as T
 

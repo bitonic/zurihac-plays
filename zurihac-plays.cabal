@@ -32,7 +32,11 @@ library
     wai,
     warp,
     http-types,
-    bytestring
+    bytestring,
+    websockets,
+    wai-websockets,
+    safe-exceptions,
+    unagi-chan
   default-language:    Haskell2010
   default-extensions:
     StrictData
@@ -42,6 +46,9 @@ library
     DeriveGeneric
     DataKinds
     TypeFamilies
+    NamedFieldPuns
+    RankNTypes
+    ScopedTypeVariables
 
 executable zurihac-plays-server
   hs-source-dirs:      app
