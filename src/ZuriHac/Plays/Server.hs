@@ -183,11 +183,10 @@ clock kconf ssVar = loop 0 mempty
                     toPress = HS.difference kcs kcsPressed
                     toRelease = HS.difference kcsPressed kcs
                     in (HMS.insert rid kcs pressedKcs, toRelease, toPress)
+            sinks <- atomically (readTVar rsinksVar)
             forM_ (HS.toList kcsToRelease) $ \kc -> do
-              sinks <- atomically (readTVar rsinksVar)
               mapM_ (`Unagi.writeChan` EventKeyRelease kc) sinks
             forM_ (HS.toList kcsToPress) $ \kc -> do
-              sinks <- atomically (readTVar rsinksVar)
               mapM_ (`Unagi.writeChan` EventKeyPress kc) sinks
             return pressedKcs')
         pressedKcs0
