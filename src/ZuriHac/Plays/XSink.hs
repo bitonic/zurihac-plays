@@ -44,23 +44,19 @@ keyCodeToX11KeySym code = case code of
   "KeyX" -> Just 0x0078
   "KeyY" -> Just 0x0079
   "KeyZ" -> Just 0x007a
+  "ArrowLeft" -> Just 0xff51
+  "ArrowUp" -> Just 0xff52
+  "ArrowRight" -> Just 0xff53
+  "ArrowDown" -> Just 0xff54
+  "Space" -> Just 0x0020
   _ -> Nothing
 
-
--- filterZeros :: Pipe Event Event IO ()
--- filterZeros = do
---   -- 
---   event <- await
---   liftIO $ print event
---   when (ekpKeyCode event > 64 && ekpKeyCode event < 91) $ yield event
---   filterZeros
 
 playEvent :: Event -> IO ()
 playEvent event = do
   case keyCodeToX11KeySym (ekpKeyCode event) of
     Nothing -> return ()
     Just keysym -> do
-      putStrLn $ "Pressing " ++ show keysym
       case event of
         EventKeyPress{} -> FakeKey.press (fromIntegral keysym)
         EventKeyRelease{} -> FakeKey.release (fromIntegral keysym)
