@@ -1,0 +1,111 @@
+<!doctype html>
+<html>
+  <head>
+    <title>ZuriHac plays</title>
+  </head>
+    <script type="text/JavaScript">
+      /* This page is served on a URL like `/blah/:room-id/client`.  We use some
+       * shity string matching to swap out the last part into something that
+       * looks like `/blah/:room-id/events-sink`. */
+      function eventsSinkUrlFromLocation() {
+        var url = window.location.href;
+
+        var i = url.lastIndexOf('/');
+        url = url.substr(0, i) + '/events-sink';
+
+        var i = url.indexOf(':');
+        if(url.substr(0, i) == 'https') {
+          url = 'wss' + url.substr(i);
+        } else {
+          url = 'ws' + url.substr(i);
+        }
+
+        return url;
+      }
+
+      /* Generates something that looks like an UUID. */
+      function generateUuid() {
+        function s4() {
+          var x = Math.floor((1 + Math.random()) * 0x10000);
+          return x.toString(16).substring(1);
+        }
+
+        return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+            s4() + '-' + s4() + s4() + s4();
+      }
+
+      /* Log some text. */
+      function log(line) {
+        var ul = document.getElementById('log');
+        var li = document.createElement('li');
+        li.textContent = line;
+        if(ul.children.length > 20) {
+          ul.removeChild(ul.children[0]);
+        }
+        ul.appendChild(li);
+      }
+
+      /* Connect to the events sink and spawn the 'zurihacPlays'. */
+      function connectToEventsSink() {
+        // var url = eventsSinkUrlFromLocation();
+        var url = 'wss://echo.websocket.org';
+        log('Connecting to ' + url + '...');
+        var socket = new WebSocket(url);
+        var clientId = generateUuid();
+
+        socket.addEventListener('open', function(event) {
+          log('Connected to server.');
+          zurihacPlays(socket, clientId);
+        });
+
+        socket.addEventListener('message', function(event) {
+          log('-> ' + event.data);
+        });
+      }
+
+      /* Main stuff. */
+      function zurihacPlays(socket, clientId) {
+        window.addEventListener('keydown', function(e) {
+          e.preventDefault();
+          var code = e.keyCode;
+          log('press ' + code);
+          socket.send(JSON.stringify({
+            'Client': clientId,
+            'Event': {
+              'KeyPress': code
+            }
+          }));
+          return false;
+        });
+
+        window.addEventListener('keyup', function(e) {
+          e.preventDefault();
+          var code = e.keyCode;
+          log('release ' + code);
+          socket.send(JSON.stringify({
+            'Client': clientId,
+            'Event': {
+              'KeyRelease': code
+            }
+          }));
+          return false;
+        });
+      }
+
+      /* Start when the document's loaded. */
+      document.onreadystatechange = function () {
+        if(document.readyState == 'complete') {
+          connectToEventsSink();
+        }
+      };
+    </script>
+    <style type="text/css">
+      ul#log {
+        font-family: monospace;
+        list-style: none;
+      }
+    </style>
+  <body>
+    <ul id="log"></ul>
+  </body>
+</html>
