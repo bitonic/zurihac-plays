@@ -17,6 +17,7 @@ import qualified Control.Concurrent.Chan.Unagi as Unagi
 import Data.FileEmbed (embedFile)
 import qualified Data.UUID as Uuid
 import qualified Data.UUID.V4 as Uuid.V4
+import qualified System.Clock as Clock
 
 import ZuriHac.Plays.Prelude
 import ZuriHac.Plays.Protocol
@@ -162,13 +163,14 @@ newRoom ssVar = do
     return rid
 
 clock :: KeysConfig ->  TVar ServerState -> IO a
-clock kconf ssVar = loop mempty
+clock kconf ssVar = loop 0 mempty
   where
-    loop :: HMS.HashMap RoomId (HS.HashSet KeyCode) -> IO a
-    loop pressedKcs0 = do
-      threadDelay (10 * 1000)
+    loop :: Clock.TimeSpec -> HMS.HashMap RoomId (HS.HashSet KeyCode) -> IO a
+    loop timePassed pressedKcs0 = do
+      threadDelay (max 0 (10 * 1000 - (tspecToNano timePassed)))
+      t0 <- Clock.getTime Clock.Monotonic
       ss <- atomically (readTVar ssVar)
-      loop =<< foldM
+      pressedKcs <- foldM
         (\pressedKcs (rid, (rstVar, rsinksVar)) -> do
             kcs <- atomically $ do
               RoomState rst <- readTVar rstVar
@@ -190,6 +192,10 @@ clock kconf ssVar = loop mempty
             return pressedKcs')
         pressedKcs0
         (HMS.toList (ssRooms ss))
+      t1 <- Clock.getTime Clock.Monotonic
+      loop (t1 - t0) pressedKcs
+
+    tspecToNano (Clock.TimeSpec sec nsec) = fromIntegral (sec * 1000 + (nsec `div` 1000))
 
 api :: WS.ConnectionOptions -> TVar ServerState -> Api
 api wsOptions ssVar = Api

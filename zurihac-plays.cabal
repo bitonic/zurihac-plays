@@ -47,7 +47,8 @@ library
     pipes,
     network,
     uuid,
-    async
+    async,
+    clock
   default-language:    Haskell2010
   default-extensions:
     StrictData
