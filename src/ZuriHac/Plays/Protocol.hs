@@ -30,6 +30,7 @@ data Event
   | EventKeyRelease KeyCode
   deriving (Eq, Show)
 
+ekpKeyCode :: Event -> KeyCode
 ekpKeyCode (EventKeyPress keyCode) = keyCode
 ekpKeyCode (EventKeyRelease keyCode) = keyCode
 

@@ -20,6 +20,7 @@ import qualified Data.UUID.V4 as Uuid.V4
 
 import ZuriHac.Plays.Prelude
 import ZuriHac.Plays.Protocol
+import ZuriHac.Plays.KeyVoting
 
 -- Static
 -- --------------------------------------------------------------------
@@ -94,9 +95,8 @@ instance (Abbreviated next) => Abbreviated (CaptureRoomId next) where
 
 type RoomSinks = HMS.HashMap ByteString (Unagi.InChan Event)
 
-type User = ByteString
 data RoomState = RoomState
-  { rsUsers :: HS.HashSet User
+  { rsUsers :: UserStates
   }
 
 data ServerState = ServerState
@@ -117,8 +117,8 @@ eventsSinkApp rid stateVar sinksVar pendingConn = do
   conn <- WS.acceptRequest pendingConn
   user <- Uuid.toASCIIBytes <$> Uuid.V4.nextRandom
   bracket
-    (atomically (modifyTVar stateVar (\rs -> rs{rsUsers = HS.insert user (rsUsers rs)})))
-    (\() -> atomically (modifyTVar stateVar (\rs -> rs{rsUsers = HS.delete user (rsUsers rs)})))
+    (atomically (modifyTVar stateVar (\rs -> rs{rsUsers = HMS.insert user (UserState mempty mempty) (rsUsers rs)})))
+    (\() -> atomically (modifyTVar stateVar (\rs -> rs{rsUsers = HMS.delete user (rsUsers rs)})))
     (\() -> loop conn user)
   where
     loop conn user = do
@@ -127,8 +127,9 @@ eventsSinkApp rid stateVar sinksVar pendingConn = do
         Left err -> do
           putStrLn ("DECODING ERROR: " ++ err)
         Right msg -> do
-          sinks <- atomically (readTVar sinksVar)
-          mapM_ (`Unagi.writeChan` msg) sinks
+          atomically $ do
+            rs <- readTVar stateVar
+            writeTVar stateVar (RoomState (processEvent (rsUsers rs) user msg))
       loop conn user
 
 eventsSourceApp :: RoomId -> TVar RoomState -> TVar RoomSinks -> WS.ServerApp
@@ -160,6 +161,36 @@ newRoom ssVar = do
       }
     return rid
 
+clock :: KeysConfig ->  TVar ServerState -> IO a
+clock kconf ssVar = loop mempty
+  where
+    loop :: HMS.HashMap RoomId (HS.HashSet KeyCode) -> IO a
+    loop pressedKcs0 = do
+      threadDelay (10 * 1000)
+      ss <- atomically (readTVar ssVar)
+      loop =<< foldM
+        (\pressedKcs (rid, (rstVar, rsinksVar)) -> do
+            kcs <- atomically $ do
+              RoomState rst <- readTVar rstVar
+              let (rst', kcs) = finishRound kconf rst
+              writeTVar rstVar (RoomState rst')
+              return kcs
+            let (pressedKcs', kcsToRelease, kcsToPress) = case HMS.lookup rid pressedKcs of
+                  Nothing -> (HMS.insert rid kcs pressedKcs, mempty, kcs)
+                  Just kcsPressed -> let
+                    toPress = HS.difference kcs kcsPressed
+                    toRelease = HS.difference kcsPressed kcs
+                    in (HMS.insert rid kcs pressedKcs, toRelease, toPress)
+            forM_ (HS.toList kcsToRelease) $ \kc -> do
+              sinks <- atomically (readTVar rsinksVar)
+              mapM_ (`Unagi.writeChan` EventKeyRelease kc) sinks
+            forM_ (HS.toList kcsToPress) $ \kc -> do
+              sinks <- atomically (readTVar rsinksVar)
+              mapM_ (`Unagi.writeChan` EventKeyPress kc) sinks
+            return pressedKcs')
+        pressedKcs0
+        (HMS.toList (ssRooms ss))
+
 api :: WS.ConnectionOptions -> TVar ServerState -> Api
 api wsOptions ssVar = Api
   { new = brief $ do
@@ -181,6 +212,18 @@ api wsOptions ssVar = Api
 -- Run
 -- --------------------------------------------------------------------
 
+keysConfig :: KeysConfig
+keysConfig = KeysConfig
+  { kcPercentageRequired = 0.2
+  , kcKeyGroups = HMS.fromList
+      [ ("ArrowLeft", 1)
+      , ("ArrowRight", 1)
+      , ("ArrowUp", 2)
+      , ("ArrowDown", 3)
+      , ("Space", 4)
+      ]
+  }
+
 run :: IO ()
 run = do
   (ssQueueIn, ssQueueOut) <- Unagi.newChan
@@ -189,5 +232,7 @@ run = do
     , ssRoomIdCounter = 0
     }
   void (newRoom ssVar)
-  Warp.run 8000 (serve (api WS.defaultConnectionOptions ssVar))
+  race_
+    (Warp.run 8000 (serve (api WS.defaultConnectionOptions ssVar)))
+    (clock keysConfig ssVar)
 

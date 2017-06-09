@@ -5,7 +5,7 @@ module ZuriHac.Plays.Prelude
 
 import Prelude as X
 import GHC.Stack as X (HasCallStack)
-import Data.List as X (isPrefixOf, stripPrefix)
+import Data.List as X (isPrefixOf, stripPrefix, foldl', sortBy)
 import Data.Char as X (toLower)
 import Data.Text as X (Text)
 import GHC.Generics as X (Generic)
@@ -16,8 +16,11 @@ import Data.ByteString as X (ByteString)
 import Data.Semigroup as X ((<>))
 import Control.Exception.Safe as X
 import Debug.Trace as X
-import Control.Monad as X (void)
+import Control.Monad as X (void, guard, foldM, forM_)
 import Control.Concurrent.MVar as X
+import Data.Ord as X (comparing, Down(..))
+import Control.Concurrent as X (threadDelay)
+import Control.Concurrent.Async as X (race_)
 
 import qualified Data.Text as T
 

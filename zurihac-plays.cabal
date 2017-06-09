@@ -46,7 +46,8 @@ library
     file-embed,
     pipes,
     network,
-    uuid
+    uuid,
+    async
   default-language:    Haskell2010
   default-extensions:
     StrictData
