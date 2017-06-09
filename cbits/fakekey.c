@@ -12,13 +12,13 @@ void fakekey_init(void) {
     fakekey_dis = XOpenDisplay(NULL);
 }
 
-void fakekey_press(int code) {
-    XTestFakeKeyEvent(fakekey_dis, code, True, 0);
+void fakekey_press(int keysym) {
+    XTestFakeKeyEvent(fakekey_dis, XKeysymToKeycode(fakekey_dis, keysym), True, 0);
     XFlush(fakekey_dis);
 }
 
-void fakekey_release(int code) {
-    XTestFakeKeyEvent(fakekey_dis, code, False, 0);
+void fakekey_release(int keysym) {
+    XTestFakeKeyEvent(fakekey_dis, XKeysymToKeycode(fakekey_dis, keysym), False, 0);
     XFlush(fakekey_dis);
 }
 
@@ -27,10 +27,10 @@ void fakekey_release(int code) {
 void fakekey_init(void) {
 }
 
-void fakekey_press(int code) {
+void fakekey_press(int keysym) {
 }
 
-void fakekey_release(int code) {
+void fakekey_release(int keysym) {
 }
 
 #endif
