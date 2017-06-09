@@ -41,7 +41,8 @@ library
     unagi-chan,
     file-embed,
     pipes,
-    network
+    network,
+    uuid
   default-language:    Haskell2010
   default-extensions:
     StrictData

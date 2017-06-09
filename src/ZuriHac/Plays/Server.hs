@@ -3,6 +3,7 @@ module ZuriHac.Plays.Server  where
 
 import Solga
 import qualified Data.HashMap.Strict as HMS
+import qualified Data.HashSet as HS
 import qualified Lucid as L
 import qualified Network.Wai as Wai
 import qualified Network.HTTP.Types as Http
@@ -14,6 +15,8 @@ import qualified Network.WebSockets as WS
 import qualified Data.Aeson as Aeson
 import qualified Control.Concurrent.Chan.Unagi as Unagi
 import Data.FileEmbed (embedFile)
+import qualified Data.UUID as Uuid
+import qualified Data.UUID.V4 as Uuid.V4
 
 import ZuriHac.Plays.Prelude
 import ZuriHac.Plays.Protocol
@@ -63,7 +66,7 @@ instance Abbreviated WebSocket
 
 data CaptureRoomId next = CaptureRoomId
   { cridServerStateVar :: TVar ServerState
-  , cridNext :: RoomId -> RoomChans -> next
+  , cridNext :: RoomId -> TVar RoomState -> TVar RoomSinks -> next
   }
 instance forall next. (Router next) => Router (CaptureRoomId next) where
   tryRoute req = case Wai.pathInfo req of
@@ -75,27 +78,29 @@ instance forall next. (Router next) => Router (CaptureRoomId next) where
         let mbRsVar = HMS.lookup roomId (ssRooms ss)
         case mbRsVar of
           Nothing -> throw (notFound ("Room " <> roomId <> " not found"))
-          Just rsVar -> nextRouter (cridNext roomId rsVar) cont
+          Just (rst, rsinks) -> nextRouter (cridNext roomId rst rsinks) cont
 instance (Abbreviated next) => Abbreviated (CaptureRoomId next) where
   type Brief (CaptureRoomId next) =
-         ( TVar ServerState
-         , RoomId -> RoomChans -> Brief next
-         )
+   ( TVar ServerState
+   , RoomId -> TVar RoomState -> TVar RoomSinks -> Brief next
+   )
   brief (ssVar, cont) = CaptureRoomId
     { cridServerStateVar = ssVar
-    , cridNext = \rid rsVar -> brief (cont rid rsVar)
+    , cridNext = \rid a b -> brief (cont rid a b)
     }
 
 -- API
 -- --------------------------------------------------------------------
 
-data RoomChans = RoomChans
-  { rcIn :: Unagi.InChan Message
-  , rcOut :: Unagi.OutChan Message
+type RoomSinks = HMS.HashMap ByteString (Unagi.InChan Event)
+
+type User = ByteString
+data RoomState = RoomState
+  { rsUsers :: HS.HashSet User
   }
 
 data ServerState = ServerState
-  { ssRooms :: HMS.HashMap RoomId RoomChans
+  { ssRooms :: HMS.HashMap RoomId (TVar RoomState, TVar RoomSinks)
   , ssRoomIdCounter :: Int
   }
 
@@ -107,37 +112,50 @@ data Api = Api
   } deriving (Generic)
 instance Router Api
 
-eventsSinkApp :: RoomId -> Unagi.InChan Message -> WS.ServerApp
-eventsSinkApp rid in_ pendingConn = do
-  loop =<< WS.acceptRequest pendingConn
+eventsSinkApp :: RoomId -> TVar RoomState -> TVar RoomSinks -> WS.ServerApp
+eventsSinkApp rid stateVar sinksVar pendingConn = do
+  conn <- WS.acceptRequest pendingConn
+  user <- Uuid.toASCIIBytes <$> Uuid.V4.nextRandom
+  bracket
+    (atomically (modifyTVar stateVar (\rs -> rs{rsUsers = HS.insert user (rsUsers rs)})))
+    (\() -> atomically (modifyTVar stateVar (\rs -> rs{rsUsers = HS.delete user (rsUsers rs)})))
+    (\() -> loop conn user)
   where
-    loop conn = do
+    loop conn user = do
       txt <- WS.receiveData conn
       case Aeson.eitherDecode txt of
         Left err -> do
           putStrLn ("DECODING ERROR: " ++ err)
         Right msg -> do
-          Unagi.writeChan in_ msg
-      loop conn
+          sinks <- atomically (readTVar sinksVar)
+          mapM_ (`Unagi.writeChan` msg) sinks
+      loop conn user
 
-eventsSourceApp :: RoomId -> Unagi.OutChan Message -> WS.ServerApp
-eventsSourceApp rid out pendingConn = do
-  loop =<< WS.acceptRequest pendingConn
+eventsSourceApp :: RoomId -> TVar RoomState -> TVar RoomSinks -> WS.ServerApp
+eventsSourceApp rid stateVar sinksVar pendingConn = do
+  conn <- WS.acceptRequest pendingConn
+  sinkId <- Uuid.toASCIIBytes <$> Uuid.V4.nextRandom
+  (in_, out) <- Unagi.newChan
+  bracket
+    (atomically (modifyTVar sinksVar (HMS.insert sinkId in_)))
+    (\() -> atomically (modifyTVar sinksVar (HMS.delete sinkId)))
+    (\() -> loop conn out)
   where
-    loop conn = do
-      msg <- Unagi.readChan out
-      WS.sendBinaryData conn (Aeson.encode (messageEvent msg))
-      loop conn
+    loop conn out = do
+      evt <- Unagi.readChan out
+      WS.sendBinaryData conn (Aeson.encode evt)
+      loop conn out
 
 newRoom :: TVar ServerState -> IO RoomId
 newRoom ssVar = do
-  (rcIn, rcOut) <- Unagi.newChan
   atomically $ do
     ss <- readTVar ssVar
     let c = ssRoomIdCounter ss
     let rid = tshow c
+    rsVar <- newTVar (RoomState mempty)
+    rsinksVar <- newTVar mempty
     writeTVar ssVar ss
-      { ssRooms = HMS.insert rid RoomChans{rcIn, rcOut} (ssRooms ss)
+      { ssRooms = HMS.insert rid (rsVar, rsinksVar) (ssRooms ss)
       , ssRoomIdCounter = c+1
       }
     return rid
@@ -148,15 +166,15 @@ api wsOptions ssVar = Api
       newRoom ssVar
   , client = brief
       ( ssVar
-      , \_roomId _rsVar -> clientHtml
+      , \_ _ _ -> clientHtml
       )
   , eventsSink = brief
       ( ssVar
-      , \roomId rsChans -> WebSocket{wsOptions, wsApp = eventsSinkApp roomId (rcIn rsChans)}
+      , \roomId rst rsinks -> WebSocket{wsOptions, wsApp = eventsSinkApp roomId rst rsinks}
       )
   , eventsSource = brief
       ( ssVar
-      , \roomId rsChans -> WebSocket{wsOptions, wsApp = eventsSourceApp roomId (rcOut rsChans)}
+      , \roomId rst rsinks -> WebSocket{wsOptions, wsApp = eventsSourceApp roomId rst rsinks}
       )
   }
 

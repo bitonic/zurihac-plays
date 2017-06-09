@@ -50,11 +50,10 @@
         var url = eventsSinkUrlFromLocation();
         log('Connecting to ' + url + '...');
         var socket = new WebSocket(url);
-        var clientId = generateUuid();
 
         socket.addEventListener('open', function(event) {
           log('Connected to server.');
-          zurihacPlays(socket, clientId);
+          zurihacPlays(socket);
         });
 
         socket.addEventListener('message', function(event) {
@@ -63,16 +62,13 @@
       }
 
       /* Main stuff. */
-      function zurihacPlays(socket, clientId) {
+      function zurihacPlays(socket) {
         window.addEventListener('keydown', function(e) {
           e.preventDefault();
           var code = e.keyCode;
           log('press ' + code);
           socket.send(JSON.stringify({
-            'client': clientId,
-            'event': {
-              'KeyPress': code
-            }
+            'KeyPress': code
           }));
           return false;
         });
@@ -82,10 +78,7 @@
           var code = e.keyCode;
           log('release ' + code);
           socket.send(JSON.stringify({
-            'client': clientId,
-            'event': {
-              'KeyRelease': code
-            }
+            'KeyRelease': code
           }));
           return false;
         });

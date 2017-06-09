@@ -23,11 +23,6 @@ OR
 
 -}
 
-data Message = Message
-  { messageClient :: Text
-  , messageEvent :: Event
-  } deriving (Eq, Show)
-
 type KeyCode = Int
 
 data Event
@@ -37,5 +32,4 @@ data Event
 
 type RoomId = Text
 
-deriveJSON (jsonProduct "message") ''Message
 deriveJSON (jsonSum "Event") ''Event
