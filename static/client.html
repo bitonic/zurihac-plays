@@ -34,52 +34,51 @@
         ul.appendChild(li);
       }
 
-      /* Make sure a reconnect is scheduled. */
-      var alreadyScheduled = false;
-      function scheduleReconnect() {
-        if(!alreadyScheduled) {
-          alreadyScheduled = true;
-          log('Reconnecting in 3s...');
-          window.setTimeout(function() {
-            alreadyScheduled = false;
-            connectToEventsSink();
-          }, 3000);
-        }
-      }
-
       /* Connect to the events sink and spawn the 'zurihacPlays'. */
       function connectToEventsSink() {
         var url = eventsSinkUrlFromLocation();
-        log('Connecting to ' + url + '...');
-        var socket = new WebSocket(url);
+        // var url = 'wss://echo.websocket.org/';
+        var socket = null;
+        var connected = false;
 
-        socket.addEventListener('open', function(event) {
-          log('Connected to server.');
-          zurihacPlays(socket);
-        });
+        function tryConnect() {
+          if(!connected) {
+            log('Attempting to connect to ' + url + '...');
+            socket = new WebSocket(url);
 
-        socket.addEventListener('message', function(event) {
-          log('-> ' + event.data);
-        });
+            socket.addEventListener('open', function(event) {
+              connected = true;
+              log('Connected to server.');
+            });
 
-        socket.addEventListener('error', function(event) {
-          scheduleReconnect();
-        });
+            socket.addEventListener('message', function(event) {
+              log('-> ' + event.data);
+            });
 
-        socket.addEventListener('close', function(event) {
-          scheduleReconnect();
-        });
-      }
+            socket.addEventListener('error', function(event) {
+              log('There was error sorry');
+            });
 
-      /* Main stuff. */
-      function zurihacPlays(socket) {
+            socket.addEventListener('close', function(event) {
+              connected = false;
+              log('Connection closed: ' + event.reason);
+              log('Reconnecting in 3s...');
+              window.setTimeout(function() {
+                tryConnect();
+              }, 3000);
+            });
+          }
+        }
+
         window.addEventListener('keydown', function(e) {
           e.preventDefault();
           var code = e.code;
           log('press ' + code);
-          socket.send(JSON.stringify({
-            'KeyPress': code
-          }));
+          if(connected) {
+            socket.send(JSON.stringify({
+              'KeyPress': code
+            }));
+          }
           return false;
         });
 
@@ -87,11 +86,15 @@
           e.preventDefault();
           var code = e.code;
           log('release ' + code);
-          socket.send(JSON.stringify({
-            'KeyRelease': code
-          }));
+          if(connected) {
+            socket.send(JSON.stringify({
+              'KeyRelease': code
+            }));
+          }
           return false;
         });
+
+        tryConnect();
       }
 
       /* Start when the document's loaded. */
