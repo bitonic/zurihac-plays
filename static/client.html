@@ -45,6 +45,19 @@
         ul.appendChild(li);
       }
 
+      /* Make sure a reconnect is scheduled. */
+      var alreadyScheduled = false;
+      function scheduleReconnect() {
+        if(!alreadyScheduled) {
+          alreadyScheduled = true;
+          log('Reconnecting in 3s...');
+          window.setTimeout(function() {
+            alreadyScheduled = false;
+            connectToEventsSink();
+          }, 3000);
+        }
+      }
+
       /* Connect to the events sink and spawn the 'zurihacPlays'. */
       function connectToEventsSink() {
         var url = eventsSinkUrlFromLocation();
@@ -58,6 +71,14 @@
 
         socket.addEventListener('message', function(event) {
           log('-> ' + event.data);
+        });
+
+        socket.addEventListener('error', function(event) {
+          scheduleReconnect();
+        });
+
+        socket.addEventListener('close', function(event) {
+          scheduleReconnect();
         });
       }
 
