@@ -169,11 +169,13 @@ clock kconf ssVar = loop 0 mempty
       t0 <- Clock.getTime Clock.Monotonic
       ss <- atomically (readTVar ssVar)
       pressedKcs <- fmap HMS.fromList $ forM (HMS.toList (ssRooms ss)) $ \(rid, (rstVar, rsinksVar)) -> do
-          kcs <- atomically $ do
+          (kcs, numUsers) <- atomically $ do
             rst <- readTVar rstVar
             let (rst', kcs) = finishRound kconf rst
             writeTVar rstVar rst'
-            return kcs
+            return (kcs, HMS.size rst')
+          putStrLn ("NUM USERS: " <> show numUsers)
+          putStrLn ("KEYS TO PRESS: " <> show (HS.size kcs))
           let (kcsToRelease, kcsToPress) = case HMS.lookup rid pressedKcs0 of
                 Nothing -> (mempty, kcs)
                 Just kcsPressed -> let
