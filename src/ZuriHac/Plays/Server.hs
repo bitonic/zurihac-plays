@@ -170,27 +170,24 @@ clock kconf ssVar = loop 0 mempty
       threadDelay (max 0 (10 * 1000 - (tspecToNano timePassed)))
       t0 <- Clock.getTime Clock.Monotonic
       ss <- atomically (readTVar ssVar)
-      pressedKcs <- foldM
-        (\pressedKcs (rid, (rstVar, rsinksVar)) -> do
-            kcs <- atomically $ do
-              RoomState rst <- readTVar rstVar
-              let (rst', kcs) = finishRound kconf rst
-              writeTVar rstVar (RoomState rst')
-              return kcs
-            let (pressedKcs', kcsToRelease, kcsToPress) = case HMS.lookup rid pressedKcs of
-                  Nothing -> (HMS.insert rid kcs pressedKcs, mempty, kcs)
-                  Just kcsPressed -> let
-                    toPress = HS.difference kcs kcsPressed
-                    toRelease = HS.difference kcsPressed kcs
-                    in (HMS.insert rid kcs pressedKcs, toRelease, toPress)
-            sinks <- atomically (readTVar rsinksVar)
-            forM_ (HS.toList kcsToRelease) $ \kc -> do
-              mapM_ (`Unagi.writeChan` EventKeyRelease kc) sinks
-            forM_ (HS.toList kcsToPress) $ \kc -> do
-              mapM_ (`Unagi.writeChan` EventKeyPress kc) sinks
-            return pressedKcs')
-        pressedKcs0
-        (HMS.toList (ssRooms ss))
+      pressedKcs <- fmap HMS.fromList $ forM (HMS.toList (ssRooms ss)) $ \(rid, (rstVar, rsinksVar)) -> do
+          kcs <- atomically $ do
+            RoomState rst <- readTVar rstVar
+            let (rst', kcs) = finishRound kconf rst
+            writeTVar rstVar (RoomState rst')
+            return kcs
+          let (kcsToRelease, kcsToPress) = case HMS.lookup rid pressedKcs0 of
+                Nothing -> (mempty, kcs)
+                Just kcsPressed -> let
+                  toPress = HS.difference kcs kcsPressed
+                  toRelease = HS.difference kcsPressed kcs
+                  in (toRelease, toPress)
+          sinks <- atomically (readTVar rsinksVar)
+          forM_ (HS.toList kcsToRelease) $ \kc -> do
+            mapM_ (`Unagi.writeChan` EventKeyRelease kc) sinks
+          forM_ (HS.toList kcsToPress) $ \kc -> do
+            mapM_ (`Unagi.writeChan` EventKeyPress kc) sinks
+          return (rid, kcs)
       t1 <- Clock.getTime Clock.Monotonic
       loop (t1 - t0) pressedKcs
 

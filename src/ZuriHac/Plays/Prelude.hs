@@ -16,7 +16,7 @@ import Data.ByteString as X (ByteString)
 import Data.Semigroup as X ((<>))
 import Control.Exception.Safe as X
 import Debug.Trace as X
-import Control.Monad as X (void, guard, foldM, forM_)
+import Control.Monad as X (void, guard, foldM, forM_, forM)
 import Control.Concurrent.MVar as X
 import Data.Ord as X (comparing, Down(..))
 import Control.Concurrent as X (threadDelay)
