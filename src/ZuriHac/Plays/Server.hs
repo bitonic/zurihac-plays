@@ -68,7 +68,7 @@ instance Abbreviated WebSocket
 
 data CaptureRoomId next = CaptureRoomId
   { cridServerStateVar :: TVar ServerState
-  , cridNext :: RoomId -> TVar RoomState -> TVar RoomSinks -> next
+  , cridNext :: RoomId -> TVar UserStates -> TVar RoomSinks -> next
   }
 instance forall next. (Router next) => Router (CaptureRoomId next) where
   tryRoute req = case Wai.pathInfo req of
@@ -84,7 +84,7 @@ instance forall next. (Router next) => Router (CaptureRoomId next) where
 instance (Abbreviated next) => Abbreviated (CaptureRoomId next) where
   type Brief (CaptureRoomId next) =
    ( TVar ServerState
-   , RoomId -> TVar RoomState -> TVar RoomSinks -> Brief next
+   , RoomId -> TVar UserStates -> TVar RoomSinks -> Brief next
    )
   brief (ssVar, cont) = CaptureRoomId
     { cridServerStateVar = ssVar
@@ -96,12 +96,8 @@ instance (Abbreviated next) => Abbreviated (CaptureRoomId next) where
 
 type RoomSinks = HMS.HashMap ByteString (Unagi.InChan Event)
 
-data RoomState = RoomState
-  { rsUsers :: UserStates
-  }
-
 data ServerState = ServerState
-  { ssRooms :: HMS.HashMap RoomId (TVar RoomState, TVar RoomSinks)
+  { ssRooms :: HMS.HashMap RoomId (TVar UserStates, TVar RoomSinks)
   , ssRoomIdCounter :: Int
   }
 
@@ -113,13 +109,13 @@ data Api = Api
   } deriving (Generic)
 instance Router Api
 
-eventsSinkApp :: RoomId -> TVar RoomState -> TVar RoomSinks -> WS.ServerApp
+eventsSinkApp :: RoomId -> TVar UserStates -> TVar RoomSinks -> WS.ServerApp
 eventsSinkApp rid stateVar sinksVar pendingConn = do
   conn <- WS.acceptRequest pendingConn
   user <- Uuid.toASCIIBytes <$> Uuid.V4.nextRandom
   bracket
-    (atomically (modifyTVar stateVar (\rs -> rs{rsUsers = HMS.insert user (UserState mempty mempty) (rsUsers rs)})))
-    (\() -> atomically (modifyTVar stateVar (\rs -> rs{rsUsers = HMS.delete user (rsUsers rs)})))
+    (atomically (modifyTVar stateVar (HMS.insert user (UserState mempty mempty))))
+    (\() -> atomically (modifyTVar stateVar (HMS.delete user)))
     (\() -> loop conn user)
   where
     loop conn user = do
@@ -130,10 +126,10 @@ eventsSinkApp rid stateVar sinksVar pendingConn = do
         Right msg -> do
           atomically $ do
             rs <- readTVar stateVar
-            writeTVar stateVar (RoomState (processEvent (rsUsers rs) user msg))
+            writeTVar stateVar (processEvent rs user msg)
       loop conn user
 
-eventsSourceApp :: RoomId -> TVar RoomState -> TVar RoomSinks -> WS.ServerApp
+eventsSourceApp :: RoomId -> TVar UserStates -> TVar RoomSinks -> WS.ServerApp
 eventsSourceApp rid stateVar sinksVar pendingConn = do
   conn <- WS.acceptRequest pendingConn
   sinkId <- Uuid.toASCIIBytes <$> Uuid.V4.nextRandom
@@ -154,7 +150,7 @@ newRoom ssVar = do
     ss <- readTVar ssVar
     let c = ssRoomIdCounter ss
     let rid = tshow c
-    rsVar <- newTVar (RoomState mempty)
+    rsVar <- newTVar mempty
     rsinksVar <- newTVar mempty
     writeTVar ssVar ss
       { ssRooms = HMS.insert rid (rsVar, rsinksVar) (ssRooms ss)
@@ -165,17 +161,21 @@ newRoom ssVar = do
 clock :: KeysConfig ->  TVar ServerState -> IO a
 clock kconf ssVar = loop 0 mempty
   where
-    loop :: Clock.TimeSpec -> HMS.HashMap RoomId (HS.HashSet KeyCode) -> IO a
+    loop ::
+         Clock.TimeSpec -> HMS.HashMap RoomId (HS.HashSet KeyCode)
+      -> IO a
     loop timePassed pressedKcs0 = do
       threadDelay (max 0 (kcSamplingRateMs kconf * 1000 - (tspecToNano timePassed)))
       t0 <- Clock.getTime Clock.Monotonic
       ss <- atomically (readTVar ssVar)
       pressedKcs <- fmap HMS.fromList $ forM (HMS.toList (ssRooms ss)) $ \(rid, (rstVar, rsinksVar)) -> do
-          kcs <- atomically $ do
-            RoomState rst <- readTVar rstVar
+          (kcs, numUsers) <- atomically $ do
+            rst <- readTVar rstVar
             let (rst', kcs) = finishRound kconf rst
-            writeTVar rstVar (RoomState rst')
-            return kcs
+            writeTVar rstVar rst'
+            return (kcs, HMS.size rst')
+          putStrLn ("NUM USERS: " <> show numUsers)
+          putStrLn ("KEYS TO PRESS: " <> show (HS.size kcs))
           let (kcsToRelease, kcsToPress) = case HMS.lookup rid pressedKcs0 of
                 Nothing -> (mempty, kcs)
                 Just kcsPressed -> let
