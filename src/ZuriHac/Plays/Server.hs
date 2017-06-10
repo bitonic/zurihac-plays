@@ -167,7 +167,7 @@ clock kconf ssVar = loop 0 mempty
   where
     loop :: Clock.TimeSpec -> HMS.HashMap RoomId (HS.HashSet KeyCode) -> IO a
     loop timePassed pressedKcs0 = do
-      threadDelay (max 0 (10 * 1000 - (tspecToNano timePassed)))
+      threadDelay (max 0 (kcSamplingRateMs kconf * 1000 - (tspecToNano timePassed)))
       t0 <- Clock.getTime Clock.Monotonic
       ss <- atomically (readTVar ssVar)
       pressedKcs <- fmap HMS.fromList $ forM (HMS.toList (ssRooms ss)) $ \(rid, (rstVar, rsinksVar)) -> do
@@ -224,6 +224,7 @@ keysConfig = KeysConfig
       , ("ArrowDown", 3)
       , ("Space", 4)
       ]
+  , kcSamplingRateMs = 10
   }
 
 run :: IO ()

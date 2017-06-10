@@ -11,6 +11,7 @@ type KeyGroup = Int
 data KeysConfig = KeysConfig
   { kcPercentageRequired :: Double
   , kcKeyGroups :: HMS.HashMap KeyCode KeyGroup
+  , kcSamplingRateMs :: Int
   }
 
 type User = ByteString
