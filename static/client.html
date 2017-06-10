@@ -23,17 +23,6 @@
         return url;
       }
 
-      /* Generates something that looks like an UUID. */
-      function generateUuid() {
-        function s4() {
-          var x = Math.floor((1 + Math.random()) * 0x10000);
-          return x.toString(16).substring(1);
-        }
-
-        return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
-            s4() + '-' + s4() + s4() + s4();
-      }
-
       /* Log some text. */
       function log(line) {
         var ul = document.getElementById('log');
