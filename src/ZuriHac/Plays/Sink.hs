@@ -28,7 +28,9 @@ eventsSourceConnection host port rid cont = withSocketsDo $ do
         putStrLn ("GOT IOError: " ++ show e)
         return True
     ]
-    (\_ -> WS.runClient host port (T.unpack ("/room/" <> rid <> "/events-source")) cont)
+    (\_ -> WS.runClient host port (T.unpack ("/room/" <> rid <> "/events-source")) $ \conn -> do
+        WS.forkPingThread conn 1
+        cont conn)
 
 eventsProducer ::
      WS.Connection
