@@ -6,18 +6,29 @@ import Network.Socket (withSocketsDo)
 import qualified Network.WebSockets as WS
 import qualified Data.Text as T
 import qualified Data.Aeson as Aeson
+import qualified Control.Retry as Retry
+import qualified Control.Monad.Catch as E
 
 import ZuriHac.Plays.Protocol
 import ZuriHac.Plays.Prelude
 
+wsRetryPolicy :: Retry.RetryPolicy
+wsRetryPolicy = Retry.constantDelay (25 * 1000)
+
+-- | Automatically retries on connection failures
 eventsSourceConnection ::
      String -- ^ URL
   -> Int -- ^ Port
   -> RoomId
-  -> (WS.Connection -> IO a)
-  -> IO a
+  -> (forall void. WS.Connection -> IO void)
+  -> IO void
 eventsSourceConnection host port rid cont = withSocketsDo $ do
-  WS.runClient host port (T.unpack ("/room/" <> rid <> "/events-source")) cont
+  Retry.recovering wsRetryPolicy
+    [ \_ -> E.Handler $ \(e :: IOError) -> do
+        putStrLn ("GOT IOError: " ++ show e)
+        return True
+    ]
+    (\_ -> WS.runClient host port (T.unpack ("/room/" <> rid <> "/events-source")) cont)
 
 eventsProducer ::
      WS.Connection

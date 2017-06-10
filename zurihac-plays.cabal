@@ -27,6 +27,7 @@ library
     ZuriHac.Plays.Protocol
     ZuriHac.Plays.TH
     ZuriHac.Plays.Prelude
+    ZuriHac.Plays.KeyVoting
   build-depends:
     base >= 4.7 && < 5,
     aeson,
@@ -48,7 +49,9 @@ library
     network,
     uuid,
     async,
-    clock
+    clock,
+    retry,
+    exceptions
   default-language:    Haskell2010
   default-extensions:
     StrictData
