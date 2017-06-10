@@ -23,7 +23,7 @@ OR
 
 -}
 
-type KeyCode = String
+type KeyCode = Text
 
 data Event
   = EventKeyPress KeyCode

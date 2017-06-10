@@ -214,8 +214,8 @@ api wsOptions ssVar = Api
 -- Run
 -- --------------------------------------------------------------------
 
-keysConfig :: KeysConfig
-keysConfig = KeysConfig
+keysConfigMario :: KeysConfig
+keysConfigMario = KeysConfig
   { kcPercentageRequired = 0.2
   , kcKeyGroups = HMS.fromList
       [ ("ArrowLeft", 1)
@@ -237,5 +237,5 @@ run = do
   void (newRoom ssVar)
   race_
     (Warp.run 8000 (serve (api WS.defaultConnectionOptions ssVar)))
-    (clock keysConfig ssVar)
+    (clock keysConfigMario ssVar)
 

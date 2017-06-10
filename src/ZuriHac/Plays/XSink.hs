@@ -16,7 +16,7 @@ run = do
   eventsSourceConnection "localhost" 8000 "0" $ \conn -> runEffect $
     for (eventsProducer conn) (lift . playEvent)
 
-keyCodeToX11KeySym :: String -> Maybe Int
+keyCodeToX11KeySym :: KeyCode -> Maybe Int
 keyCodeToX11KeySym code = case code of
   "KeyA" -> Just 0x0061
   "KeyB" -> Just 0x0062
