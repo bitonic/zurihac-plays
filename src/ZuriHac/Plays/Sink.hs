@@ -24,8 +24,9 @@ eventsSourceConnection ::
   -> IO void
 eventsSourceConnection host port rid cont = withSocketsDo $ do
   Retry.recovering wsRetryPolicy
-    [ \_ -> E.Handler $ \(e :: IOError) -> do
-        putStrLn ("GOT IOError: " ++ show e)
+    [ \_ -> E.Handler $ \(_ :: SomeAsyncException) -> return False
+    , \_ -> E.Handler $ \(e :: SomeException) -> do
+        putStrLn ("GOT ERROR: " ++ show e)
         return True
     ]
     (\_ -> WS.runClient host port (T.unpack ("/room/" <> rid <> "/events-source")) $ \conn -> do
