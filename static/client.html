@@ -35,13 +35,22 @@
       }
 
       /* Connect to the events sink and spawn the 'zurihacPlays'. */
-      function connectToEventsSink() {
+      function main() {
         var url = eventsSinkUrlFromLocation();
         // var url = 'wss://echo.websocket.org/';
         var socket = null;
         var connected = false;
 
-        function tryConnect() {
+        function close() {
+          if(connected) {
+            connected = false;
+            window.setTimeout(function() {
+              connect();
+            }, 3000);
+          }
+        }
+
+        function connect() {
           if(!connected) {
             log('Attempting to connect to ' + url + '...');
             socket = new WebSocket(url);
@@ -57,15 +66,12 @@
 
             socket.addEventListener('error', function(event) {
               log('There was error sorry');
+              close();
             });
 
             socket.addEventListener('close', function(event) {
-              connected = false;
               log('Connection closed: ' + event.reason);
-              log('Reconnecting in 3s...');
-              window.setTimeout(function() {
-                tryConnect();
-              }, 3000);
+              close();
             });
           }
         }
@@ -78,6 +84,8 @@
             socket.send(JSON.stringify({
               'KeyPress': code
             }));
+          } else {
+            log('ignored');
           }
           return false;
         });
@@ -90,17 +98,19 @@
             socket.send(JSON.stringify({
               'KeyRelease': code
             }));
+          } else {
+            log('ignored');
           }
           return false;
         });
 
-        tryConnect();
+        connect();
       }
 
       /* Start when the document's loaded. */
       document.onreadystatechange = function () {
         if(document.readyState == 'complete') {
-          connectToEventsSink();
+          main();
         }
       };
     </script>

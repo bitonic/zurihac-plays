@@ -281,4 +281,4 @@ run = do
   void (newRoom ssVar)
   race_
     (Warp.run 8000 (serve (api WS.defaultConnectionOptions ssVar)))
-    (clock keysConfigRTypeSnes ssVar)
+    (clock keysConfigMarioSnes ssVar)
