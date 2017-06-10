@@ -214,8 +214,8 @@ api wsOptions ssVar = Api
 -- Run
 -- --------------------------------------------------------------------
 
-keysConfigMario :: KeysConfig
-keysConfigMario = KeysConfig
+keysConfigMarioFlash :: KeysConfig
+keysConfigMarioFlash = KeysConfig
   { kcPercentageRequired = 0.2
   , kcKeyGroups = HMS.fromList
       [ ("ArrowLeft", 1)
@@ -223,6 +223,20 @@ keysConfigMario = KeysConfig
       , ("ArrowUp", 2)
       , ("ArrowDown", 3)
       , ("Space", 4)
+      ]
+  , kcSamplingRateMs = 10
+  }
+
+keysConfigMarioSnes :: KeysConfig
+keysConfigMarioSnes = KeysConfig
+  { kcPercentageRequired = 0.2
+  , kcKeyGroups = HMS.fromList
+      [ ("ArrowLeft", 1)
+      , ("ArrowRight", 1)
+      , ("ArrowUp", 2)
+      , ("ArrowDown", 3)
+      , ("KeyZ", 4)
+      , ("KeyX", 5)
       ]
   , kcSamplingRateMs = 10
   }
@@ -237,5 +251,4 @@ run = do
   void (newRoom ssVar)
   race_
     (Warp.run 8000 (serve (api WS.defaultConnectionOptions ssVar)))
-    (clock keysConfigMario ssVar)
-
+    (clock keysConfigMarioSnes ssVar)
