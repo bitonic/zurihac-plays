@@ -229,7 +229,7 @@ keysConfigMarioFlash = KeysConfig
 
 keysConfigMarioSnes :: KeysConfig
 keysConfigMarioSnes = KeysConfig
-  { kcPercentageRequired = 0.2
+  { kcPercentageRequired = 0.4
   , kcKeyGroups = HMS.fromList
       [ ("ArrowLeft", 1)
       , ("ArrowRight", 1)
@@ -237,6 +237,36 @@ keysConfigMarioSnes = KeysConfig
       , ("ArrowDown", 3)
       , ("KeyZ", 4)
       , ("KeyX", 5)
+      ]
+  , kcSamplingRateMs = 10
+  }
+
+keysConfigTetrisSnes :: KeysConfig
+keysConfigTetrisSnes = KeysConfig
+  { kcPercentageRequired = 0.4
+  , kcKeyGroups = HMS.fromList
+      [ ("ArrowLeft", 1)
+      , ("ArrowRight", 1)
+      , ("ArrowUp", 2)
+      , ("ArrowDown", 3)
+      , ("KeyZ", 4)
+      , ("KeyX", 5)
+      ]
+  , kcSamplingRateMs = 100
+  }
+
+keysConfigRTypeSnes :: KeysConfig
+keysConfigRTypeSnes = KeysConfig
+  { kcPercentageRequired = 0.6
+  , kcKeyGroups = HMS.fromList
+      [ ("ArrowLeft", 1)
+      , ("ArrowRight", 1)
+      , ("ArrowUp", 2)
+      , ("ArrowDown", 2)
+      , ("KeyZ", 4)
+      , ("KeyX", 5)
+      , ("KeyA", 6)
+      , ("KeyS", 7)
       ]
   , kcSamplingRateMs = 10
   }
@@ -251,4 +281,4 @@ run = do
   void (newRoom ssVar)
   race_
     (Warp.run 8000 (serve (api WS.defaultConnectionOptions ssVar)))
-    (clock keysConfigMarioSnes ssVar)
+    (clock keysConfigRTypeSnes ssVar)
