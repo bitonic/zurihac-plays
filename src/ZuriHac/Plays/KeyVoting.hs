@@ -66,4 +66,4 @@ finishRound now kconf uss = let
           , usReleasedKeys = mempty
           }
       )
-  in (uss', goodKcs)
+  in trace ("NUM ACTIVE PLAYERS: " <> show numUsers) (uss', goodKcs)
