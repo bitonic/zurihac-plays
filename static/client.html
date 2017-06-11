@@ -39,53 +39,50 @@
         var url = eventsSinkUrlFromLocation();
         // var url = 'wss://echo.websocket.org/';
         var socket = null;
-        var connected = false;
 
-        function close() {
-          if(connected) {
-            connected = false;
+        var reconnect_scheduled = false;
+        function reconnect() {
+          if(!reconnect_scheduled) {
+            reconnect_scheduled = true;
+            log('Reconnecting in 3s...');
             window.setTimeout(function() {
               connect();
+              reconnect_scheduled = false;
             }, 3000);
           }
         }
 
         function connect() {
-          if(!connected) {
-            log('Attempting to connect to ' + url + '...');
-            socket = new WebSocket(url);
+          log('Attempting to connect to ' + url + '...');
+          socket = new WebSocket(url);
 
-            socket.addEventListener('open', function(event) {
-              connected = true;
-              log('Connected to server.');
-            });
+          socket.addEventListener('open', function(event) {
+            log('Connected to server.');
+          });
 
-            socket.addEventListener('message', function(event) {
-              log('-> ' + event.data);
-            });
+          socket.addEventListener('message', function(event) {
+            log('-> ' + event.data);
+          });
 
-            socket.addEventListener('error', function(event) {
-              log('There was error sorry');
-              close();
-            });
+          socket.addEventListener('error', function(event) {
+            socket = null;
+            reconnect();
+          });
 
-            socket.addEventListener('close', function(event) {
-              log('Connection closed: ' + event.reason);
-              close();
-            });
-          }
+          socket.addEventListener('close', function(event) {
+            socket = null;
+            reconnect();
+          });
         }
 
         window.addEventListener('keydown', function(e) {
           e.preventDefault();
           var code = e.code;
           log('press ' + code);
-          if(connected) {
+          if(socket && socket.readyState == socket.OPEN) {
             socket.send(JSON.stringify({
               'KeyPress': code
             }));
-          } else {
-            log('ignored');
           }
           return false;
         });
@@ -94,12 +91,10 @@
           e.preventDefault();
           var code = e.code;
           log('release ' + code);
-          if(connected) {
+          if(socket && socket.readyState == socket.OPEN) {
             socket.send(JSON.stringify({
               'KeyRelease': code
             }));
-          } else {
-            log('ignored');
           }
           return false;
         });
