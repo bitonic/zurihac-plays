@@ -113,8 +113,9 @@ eventsSinkApp :: RoomId -> TVar UserStates -> TVar RoomSinks -> WS.ServerApp
 eventsSinkApp rid stateVar sinksVar pendingConn = do
   conn <- WS.acceptRequest pendingConn
   user <- Uuid.toASCIIBytes <$> Uuid.V4.nextRandom
+  now <- Clock.getTime Clock.Monotonic
   bracket
-    (atomically (modifyTVar stateVar (HMS.insert user (UserState mempty mempty))))
+    (atomically (modifyTVar stateVar (HMS.insert user (UserState mempty mempty now))))
     (\() -> atomically (modifyTVar stateVar (HMS.delete user)))
     (\() -> loop conn user)
   where
@@ -124,9 +125,10 @@ eventsSinkApp rid stateVar sinksVar pendingConn = do
         Left err -> do
           putStrLn ("DECODING ERROR: " ++ err)
         Right msg -> do
+          now <- Clock.getTime Clock.Monotonic
           atomically $ do
             rs <- readTVar stateVar
-            writeTVar stateVar (processEvent rs user msg)
+            writeTVar stateVar (processEvent now rs user msg)
       loop conn user
 
 eventsSourceApp :: RoomId -> TVar UserStates -> TVar RoomSinks -> WS.ServerApp
@@ -165,13 +167,13 @@ clock kconf ssVar = loop 0 mempty
          Clock.TimeSpec -> HMS.HashMap RoomId (HS.HashSet KeyCode)
       -> IO a
     loop timePassed pressedKcs0 = do
-      threadDelay (max 0 (kcSamplingRateMs kconf * 1000 - (tspecToNano timePassed)))
+      threadDelay (max 0 (kcSamplingRateMs kconf * 1000 - fromIntegral (Clock.toNanoSecs timePassed)))
       t0 <- Clock.getTime Clock.Monotonic
       ss <- atomically (readTVar ssVar)
       pressedKcs <- fmap HMS.fromList $ forM (HMS.toList (ssRooms ss)) $ \(rid, (rstVar, rsinksVar)) -> do
           (kcs, numUsers) <- atomically $ do
             rst <- readTVar rstVar
-            let (rst', kcs) = finishRound kconf rst
+            let (rst', kcs) = finishRound t0 kconf rst
             writeTVar rstVar rst'
             return (kcs, HMS.size rst')
           putStrLn ("NUM USERS: " <> show numUsers)
@@ -190,8 +192,6 @@ clock kconf ssVar = loop 0 mempty
           return (rid, kcs)
       t1 <- Clock.getTime Clock.Monotonic
       loop (t1 - t0) pressedKcs
-
-    tspecToNano (Clock.TimeSpec sec nsec) = fromIntegral (sec * 1000 + (nsec `div` 1000))
 
 api :: WS.ConnectionOptions -> TVar ServerState -> Api
 api wsOptions ssVar = Api
@@ -225,6 +225,7 @@ keysConfigMarioFlash = KeysConfig
       , ("Space", 4)
       ]
   , kcSamplingRateMs = 10
+  , kcUserTimeoutMs = 3000
   }
 
 keysConfigMarioSnes :: KeysConfig
@@ -239,6 +240,7 @@ keysConfigMarioSnes = KeysConfig
       , ("KeyX", 5)
       ]
   , kcSamplingRateMs = 10
+  , kcUserTimeoutMs = 3000
   }
 
 keysConfigTetrisSnes :: KeysConfig
@@ -253,6 +255,7 @@ keysConfigTetrisSnes = KeysConfig
       , ("KeyX", 5)
       ]
   , kcSamplingRateMs = 100
+  , kcUserTimeoutMs = 5000
   }
 
 keysConfigRTypeSnes :: KeysConfig
@@ -269,6 +272,7 @@ keysConfigRTypeSnes = KeysConfig
       , ("KeyS", 7)
       ]
   , kcSamplingRateMs = 10
+  , kcUserTimeoutMs = 3000
   }
 
 run :: IO ()
