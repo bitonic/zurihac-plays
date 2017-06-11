@@ -115,6 +115,9 @@
 
               td.addEventListener('touchstart', function(e) {
                 e.preventDefault();
+                if(window.navigator && window.navigator.vibrate) {
+                  window.navigator.vibrate(200);
+                }
                 down(code);
                 return false;
               });
