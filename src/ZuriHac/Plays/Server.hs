@@ -240,7 +240,7 @@ keysConfigMarioSnes = KeysConfig
       , ("KeyX", 5)
       ]
   , kcSamplingRateMs = 10
-  , kcUserTimeoutMs = 3000
+  , kcUserTimeoutMs = 5000
   }
 
 keysConfigTetrisSnes :: KeysConfig
