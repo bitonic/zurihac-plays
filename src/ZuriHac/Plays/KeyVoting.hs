@@ -12,8 +12,8 @@ type KeyGroup = Int
 data KeysConfig = KeysConfig
   { kcPercentageRequired :: Double
   , kcKeyGroups :: HMS.HashMap KeyCode KeyGroup
-  , kcSamplingRateMs :: Int
-  , kcUserTimeoutMs :: Int
+  , kcSamplingRateMs :: Int64
+  , kcUserTimeoutMs :: Int64
   }
 
 type User = ByteString
@@ -51,7 +51,7 @@ finishRound now kconf uss = let
     return (HMS.singleton kg (HMS.singleton kc 1))
   numUsers = length $ do
     us <- HMS.elems uss
-    guard (Clock.toNanoSecs (now - usLastActive us) < fromIntegral (kcUserTimeoutMs kconf * 1000))
+    guard (Clock.toNanoSecs (now - usLastActive us) < fromIntegral (kcUserTimeoutMs kconf * 1000 * 1000))
   goodKcs = HS.fromList $ do
     kcs <- HMS.elems kcs
     let (kc, count) : _ = sortBy (comparing (Down . snd)) (HMS.toList kcs)

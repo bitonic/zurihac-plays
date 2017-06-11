@@ -21,6 +21,7 @@ import Control.Concurrent.MVar as X
 import Data.Ord as X (comparing, Down(..))
 import Control.Concurrent as X (threadDelay)
 import Control.Concurrent.Async as X (race_)
+import Data.Int as X (Int64)
 
 import qualified Data.Text as T
 
