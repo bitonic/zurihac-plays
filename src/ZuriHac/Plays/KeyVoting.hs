@@ -55,7 +55,7 @@ finishRound now kconf uss = let
   goodKcs = HS.fromList $ do
     kcs <- HMS.elems kcs
     let (kc, count) : _ = sortBy (comparing (Down . snd)) (HMS.toList kcs)
-    guard (fromIntegral count / fromIntegral numUsers > kcPercentageRequired kconf)
+    guard (numUsers > 0 && (fromIntegral count / fromIntegral numUsers > kcPercentageRequired kconf))
     return kc
   uss' = HMS.fromList $ do
     (user, us) <- HMS.toList uss
