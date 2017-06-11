@@ -1,6 +1,9 @@
 <!doctype html>
 <html>
   <head>
+    <meta charset="utf-8">
+    <meta name="viewport"
+      content="width=600, initial-scale=1, maximum-scale=1" />
     <title>ZuriHac plays</title>
   </head>
     <script type="text/JavaScript">
@@ -75,27 +78,65 @@
           });
         }
 
-        window.addEventListener('keydown', function(e) {
-          e.preventDefault();
-          var code = e.code;
+        function down(code) {
           log('press ' + code);
           if(socket && socket.readyState == socket.OPEN) {
             socket.send(JSON.stringify({
               'KeyPress': code
             }));
           }
-          return false;
-        });
 
-        window.addEventListener('keyup', function(e) {
-          e.preventDefault();
-          var code = e.code;
+          var td = document.getElementById('kb-' + code);
+          if(td) {
+            td.className = 'down';
+          }
+        }
+
+        function up(code) {
           log('release ' + code);
           if(socket && socket.readyState == socket.OPEN) {
             socket.send(JSON.stringify({
               'KeyRelease': code
             }));
           }
+
+          var td = document.getElementById('kb-' + code);
+          if(td) {
+            td.className = '';
+          }
+        }
+
+        var tds = document.getElementsByTagName('td');
+        for(var i in tds) {
+          var td = tds[i];
+          if(td.id && td.id.startsWith("kb-")) {
+            (function() {
+              var code = td.id.substr(3);
+
+              td.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                down(code);
+                return false;
+              });
+
+              td.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                up(code);
+                return false;
+              });
+            })();
+          }
+        }
+
+        window.addEventListener('keydown', function(e) {
+          e.preventDefault();
+          down(e.code);
+          return false;
+        });
+
+        window.addEventListener('keyup', function(e) {
+          e.preventDefault();
+          up(e.code);
           return false;
         });
 
@@ -110,12 +151,60 @@
       };
     </script>
     <style type="text/css">
+      html {
+        text-align: center;
+        font-family: sans-serif;
+      }
+
+      body {
+        max-width: 600px;
+      }
+
       ul#log {
         font-family: monospace;
         list-style: none;
+        font-size: 12px;
+        overflow: hidden;
+        text-align: left;
+        max-width: 500px;
+      }
+
+      table#kb {
+        font-size: 80px;
+        margin: 0px auto;
+        table-layout: fixed;
+        text-align: center;
+      }
+
+      table#kb tr td {
+        width: 100px;
+        height: 100px;
+        border: 1px solid black;
+        vertical-align: middle;
+      }
+
+      table#kb tr td.down {
+        background-color: rgb(150, 150, 150);
       }
     </style>
   <body>
+    <h1>ZuriHac Plays</h1>
+    <table id="kb">
+      <tr>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td id="kb-ArrowUp">↑</td>
+        <td></td>
+      </tr>
+      <tr>
+        <td id="kb-KeyZ">Z</td>
+        <td id="kb-KeyX">X</td>
+        <td id="kb-ArrowLeft">←</td>
+        <td id="kb-ArrowDown">↓</td>
+        <td id="kb-ArrowRight">→</td>
+      </tr>
+    </table>
     <ul id="log"></ul>
   </body>
 </html>
