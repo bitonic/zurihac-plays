@@ -15,8 +15,8 @@ foreign import ccall "fakekey_release" c_fakekey_release :: CInt -> IO ()
 init :: IO ()
 init = c_fakekey_init
 
-press :: CInt -> IO ()
+press :: Int -> IO ()
 press = c_fakekey_press . fromIntegral
 
-release :: CInt -> IO ()
+release :: Int -> IO ()
 release = c_fakekey_release . fromIntegral

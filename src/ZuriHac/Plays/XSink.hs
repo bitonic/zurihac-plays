@@ -65,5 +65,5 @@ playEvent event = do
     Nothing -> return ()
     Just keysym -> do
       case event of
-        EventKeyPress{}   -> FakeKey.press (fromIntegral keysym)
-        EventKeyRelease{} -> FakeKey.release (fromIntegral keysym)
+        EventKeyPress{}   -> FakeKey.press keysym
+        EventKeyRelease{} -> FakeKey.release keysym
